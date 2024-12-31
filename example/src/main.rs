@@ -1,10 +1,48 @@
-use egui::Vec2b;
-use egui_taffy::{tui, TuiBuilderLogic};
+use eframe::egui::{self, Vec2b};
+use egui_taffy::{taffy, tui, TuiBuilderLogic};
 use taffy::{
     prelude::{auto, fr, length, percent, repeat, span},
     style_helpers, Style,
 };
 
+#[cfg(target_arch = "wasm32")]
+use eframe::{egui::Context, App, Frame, WebOptions, WebRunner};
+
+#[cfg(target_arch = "wasm32")]
+#[derive(Default)]
+struct MyApp {
+    grow_variables: Option<GrowVariables>,
+    button_variables: ButtonParams,
+}
+
+#[cfg(target_arch = "wasm32")]
+impl App for MyApp {
+    fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
+        ctx.options_mut(|options| {
+            options.max_passes = std::num::NonZeroUsize::new(3).unwrap();
+        });
+
+        ctx.style_mut(|style| {
+            style.wrap_mode = Some(egui::TextWrapMode::Extend);
+        });
+
+        flex_grid_demo(ctx);
+
+        flex_demo(ctx);
+
+        flex_wrap_demo(ctx);
+
+        grow_demo(ctx, &mut self.grow_variables);
+
+        button_demo(ctx, &mut self.button_variables);
+
+        overflow_demo(ctx);
+
+        grid_sticky(ctx);
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 fn main() -> eframe::Result {
     let mut grow_variables = None;
     let mut button_variables = Default::default();
@@ -38,6 +76,48 @@ fn main() -> eframe::Result {
 
         grid_sticky(ctx);
     })
+}
+
+#[cfg(target_arch = "wasm32")]
+fn main() {
+    use eframe::wasm_bindgen::JsCast as _;
+    let web_options = WebOptions::default();
+
+    wasm_bindgen_futures::spawn_local(async {
+        let document = web_sys::window()
+            .expect("No window")
+            .document()
+            .expect("No document");
+
+        let canvas = document
+            .get_element_by_id("the_canvas_id")
+            .expect("Failed to find the_canvas_id")
+            .dyn_into::<web_sys::HtmlCanvasElement>()
+            .expect("the_canvas_id was not a HtmlCanvasElement");
+
+        let start_result = WebRunner::new()
+            .start(
+                canvas,
+                web_options,
+                Box::new(|_cc| Ok(Box::new(MyApp::default()))),
+            )
+            .await;
+
+        // Remove the loading text and spinner:
+        if let Some(loading_text) = document.get_element_by_id("loading_text") {
+            match start_result {
+                Ok(_) => {
+                    loading_text.remove();
+                }
+                Err(e) => {
+                    loading_text.set_inner_html(
+                        "<p> The app has crashed. See the developer console for details. </p>",
+                    );
+                    panic!("Failed to start eframe: {e:?}");
+                }
+            }
+        }
+    });
 }
 
 fn flex_wrap_demo(ctx: &egui::Context) {
