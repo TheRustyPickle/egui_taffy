@@ -1,86 +1,42 @@
-use eframe::egui::{self, Vec2b};
+use eframe::egui::{self, Context, Vec2b};
+use eframe::{App, Frame};
 use egui_taffy::{taffy, tui, TuiBuilderLogic};
 use taffy::{
     prelude::{auto, fr, length, percent, repeat, span},
     style_helpers, Style,
 };
 
-#[cfg(target_arch = "wasm32")]
-use eframe::{egui::Context, App, Frame, WebOptions, WebRunner};
-
-#[cfg(target_arch = "wasm32")]
 #[derive(Default)]
 struct MyApp {
     grow_variables: Option<GrowVariables>,
     button_variables: ButtonParams,
 }
 
-#[cfg(target_arch = "wasm32")]
-impl App for MyApp {
-    fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
-        ctx.options_mut(|options| {
-            options.max_passes = std::num::NonZeroUsize::new(3).unwrap();
-        });
-
-        ctx.style_mut(|style| {
-            style.wrap_mode = Some(egui::TextWrapMode::Extend);
-        });
-
-        flex_grid_demo(ctx);
-
-        flex_demo(ctx);
-
-        flex_wrap_demo(ctx);
-
-        grow_demo(ctx, &mut self.grow_variables);
-
-        button_demo(ctx, &mut self.button_variables);
-
-        overflow_demo(ctx);
-
-        grid_sticky(ctx);
-    }
-}
-
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> eframe::Result {
-    let mut grow_variables = None;
-    let mut button_variables = Default::default();
+    use eframe::egui::ViewportBuilder;
 
-    eframe::run_simple_native("demo", Default::default(), move |ctx, _frame| {
-        // Enable multipass rendering upon request without drawing to screen
-        //
-        // View README for more details
-        ctx.options_mut(|options| {
-            options.max_passes = std::num::NonZeroUsize::new(3).unwrap();
-        });
+    let options = eframe::NativeOptions {
+        centered: true,
+        persist_window: false,
+        viewport: ViewportBuilder {
+            ..Default::default()
+        },
+        ..Default::default()
+    };
 
-        // Disable text wrapping
-        //
-        // egui text layouting tries to utilize minimal width possible
-        ctx.style_mut(|style| {
-            style.wrap_mode = Some(egui::TextWrapMode::Extend);
-        });
-
-        flex_grid_demo(ctx);
-
-        flex_demo(ctx);
-
-        flex_wrap_demo(ctx);
-
-        grow_demo(ctx, &mut grow_variables);
-
-        button_demo(ctx, &mut button_variables);
-
-        overflow_demo(ctx);
-
-        grid_sticky(ctx);
-    })
+    eframe::run_native(
+        "Demo",
+        options,
+        Box::new(|_cc| Ok(Box::new(MyApp::default()))),
+    )
 }
 
 #[cfg(target_arch = "wasm32")]
 fn main() {
     use eframe::wasm_bindgen::JsCast as _;
+    use eframe::{WebOptions, WebRunner};
+
     let web_options = WebOptions::default();
 
     wasm_bindgen_futures::spawn_local(async {
@@ -120,7 +76,39 @@ fn main() {
     });
 }
 
-fn flex_wrap_demo(ctx: &egui::Context) {
+impl App for MyApp {
+    fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
+        // Enable multipass rendering upon request without drawing to screen
+        //
+        // View README for more details
+        ctx.options_mut(|options| {
+            options.max_passes = std::num::NonZeroUsize::new(3).unwrap();
+        });
+
+        // Disable text wrapping
+        //
+        // egui text layouting tries to utilize minimal width possible
+        ctx.style_mut(|style| {
+            style.wrap_mode = Some(egui::TextWrapMode::Extend);
+        });
+
+        flex_grid_demo(ctx);
+
+        flex_demo(ctx);
+
+        flex_wrap_demo(ctx);
+
+        grow_demo(ctx, &mut self.grow_variables);
+
+        button_demo(ctx, &mut self.button_variables);
+
+        overflow_demo(ctx);
+
+        grid_sticky(ctx);
+    }
+}
+
+fn flex_wrap_demo(ctx: &Context) {
     let default_style = || Style {
         padding: length(8.),
         gap: length(8.),
@@ -192,7 +180,7 @@ fn flex_wrap_demo(ctx: &egui::Context) {
     });
 }
 
-fn flex_grid_demo(ctx: &egui::Context) {
+fn flex_grid_demo(ctx: &Context) {
     egui::Window::new("Grid demo").show(ctx, |ui| {
         // Style rules can be defined as functions and applied with
         // [`TuiBuilder::mut_style`] function.
@@ -293,7 +281,7 @@ pub struct GrowVariables {
     padding: f32,
 }
 
-fn grow_demo(ctx: &egui::Context, variables: &mut Option<GrowVariables>) {
+fn grow_demo(ctx: &Context, variables: &mut Option<GrowVariables>) {
     let GrowVariables {
         gap,
         margin,
@@ -374,7 +362,7 @@ fn grow_demo(ctx: &egui::Context, variables: &mut Option<GrowVariables>) {
     });
 }
 
-fn flex_demo(ctx: &egui::Context) {
+fn flex_demo(ctx: &Context) {
     egui::Window::new("Flex demo")
         .scroll(Vec2b { x: true, y: true })
         .show(ctx, |ui| {
@@ -489,7 +477,7 @@ struct ButtonParams {
     selected: bool,
 }
 
-fn button_demo(ctx: &egui::Context, params: &mut ButtonParams) {
+fn button_demo(ctx: &Context, params: &mut ButtonParams) {
     egui::Window::new("Button demo")
         .scroll(Vec2b { x: true, y: true })
         .show(ctx, |ui| {
@@ -585,7 +573,7 @@ fn button_demo(ctx: &egui::Context, params: &mut ButtonParams) {
         });
 }
 
-fn overflow_demo(ctx: &egui::Context) {
+fn overflow_demo(ctx: &Context) {
     egui::Window::new("Overflow demo")
         .scroll(Vec2b { x: true, y: true })
         .show(ctx, |ui| {
@@ -628,7 +616,7 @@ fn overflow_demo(ctx: &egui::Context) {
         });
 }
 
-fn grid_sticky(ctx: &egui::Context) {
+fn grid_sticky(ctx: &Context) {
     egui::Window::new("Sticky header and column in grid")
         .scroll(Vec2b::FALSE)
         .show(ctx, |ui| {
